@@ -1,0 +1,207 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using Unity.Collections;
+
+public class Slitter : MonoBehaviour
+{
+
+    [SerializeField] private RenderTexture renderTexture;
+    [SerializeField] private Texture2D texture2D;
+    private Texture2D renderTexture2D;
+    // [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private Image image;
+
+    private int width;
+    private int height;
+
+    NativeArray<RGB24> renderTexture2DPixels;
+    NativeArray<RGB24> texture2DPixels;
+    // Start is called before the first frame update
+    private void Start()
+    {
+
+        width = renderTexture.width;
+        height = renderTexture.height;
+
+        renderTexture2D = GetTexture2D(renderTexture);
+
+        texture2D = new Texture2D(width, height, TextureFormat.RGB24, false);
+        texture2D.filterMode = FilterMode.Point;
+
+        CreateSprite();
+
+
+        renderTexture2DPixels = renderTexture2D.GetPixelData<RGB24>(0);
+        texture2DPixels = texture2D.GetPixelData<RGB24>(0);
+    }
+
+
+    private Texture2D GetTexture2D(RenderTexture renderTexture)
+    {
+        Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+        tex.filterMode = FilterMode.Point;
+        RenderTexture.active = renderTexture;
+        tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        tex.Apply();
+        return tex;
+    }
+
+
+    private int currentX = 0;
+    float lastXMovement = 0;
+    float movementInterval = 0.07f;
+
+    private void Update()
+    {
+        if (currentX < width)
+        {
+            UpdateTexture();
+
+            if (Time.time > lastXMovement + movementInterval)
+            {
+                lastXMovement = Time.time;
+                currentX++;
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            Debug.Log("pixels:" + (width * height).ToString());
+
+            Debug.Log("byte array length:" + renderTexture2D.GetPixelData<byte>(0).Length);
+        }
+    }
+
+
+    private void UpdateTexture()
+    {
+
+        RenderTexture.active = renderTexture;
+        renderTexture2D.ReadPixels(new Rect(currentX, 0, width - currentX, height), currentX, 0);
+        //renderTexture2D.Apply();
+
+
+
+        //  renderTexture2D.GetPixelData<Color32>(,0)
+        int length = width * height;
+        int index;
+        for (int x = currentX; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                index = (y * width) + x;
+                texture2DPixels[index] = renderTexture2DPixels[index];
+            }
+        }
+        /* for (int i = height * currentX; i < length; i++)
+         {
+             texture2DPixels[i] = renderTexture2DPixels[i];
+         }*/
+
+        /** texture2DPixels[0] = new RGB24();
+         texture2DPixels[3] = new RGB24();/*/
+
+        texture2D.Apply();
+
+    }
+    /* private void UpdateTexture()
+     {
+
+         RenderTexture.active = renderTexture;
+         renderTexture2D.ReadPixels(new Rect(currentX, 0, width - currentX, height), currentX, 0);
+         //renderTexture2D.Apply();
+
+         Color[] pixels = renderTexture2D.GetPixels(currentX, 0, width - currentX, height);
+       //  renderTexture2D.GetPixelData<Color32>(,0)
+         texture2D.SetPixels(currentX, 0, width - currentX, height, pixels);
+         texture2D.SetPixelData()
+         texture2D.Apply();
+
+     }*/
+
+    private void CreateSprite()
+    {
+        Sprite sprite = Sprite.Create
+                (texture2D, new Rect(0, 0, texture2D.width, texture2D.height), new Vector2(0.5f, 0.5f), 100);
+        image.sprite = sprite;
+        image.SetNativeSize();
+    }
+
+
+
+
+}
+
+public struct RGB24
+{
+    public byte r, g, b;
+}
+
+
+
+    private void UpdateFrozenTexture()
+    {
+         Color[] newPixels =
+             livingTexture2D.GetPixels(currentX, 0, 1, screenHeight);
+         frozenTexture2D.SetPixels(currentX, 0, 1, screenHeight, newPixels);
+         frozenTexture2D.Apply();
+    }
+}
+
+
+       if (Time.time > lastXMovement + movementInterval)
+       {
+           lastXMovement = Time.time;
+           currentX++;
+           if (currentX < screenWidth)
+           {
+               UpdateFrozenTexture();
+           }
+       }
+
+
+
+	       [SerializeField] private float rightMovementPerSecond;
+    private void UpdateSlitBrush(ref float deltaTime)
+    {
+        Vector2Int brushPosition = 
+            new Vector2Int((int)slitBrush.rectTransform.position.x, (int)slitBrush.rectTransform.position.y);
+
+        //if (Vector2.Distance(position, slitBrush.lastFreezePosition) > slitBrush.size.magnitude)
+        int distance = Mathf.Abs(brushPosition.x - slitBrush.lastFreezePosition.x) ;
+        if (distance >= slitBrush.size.x)
+        {
+            Debug.Log("distance:" + distance.ToString());
+            IntBounds bounds = slitBrush.GetIntBounds();
+            FreezeRect(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+            slitBrush.lastFreezePosition = brushPosition;
+        }
+
+        Vector3 movement = deltaTime * (Vector2.right * rightMovementPerSecond);
+        slitBrush.rectTransform.position += movement;
+    }
+
+
+	public class SlitBrush : MonoBehaviour
+{
+    [SerializeField] private Collider2D collider;
+    public RectTransform rectTransform;
+    public Vector2Int size;
+    public Vector2Int lastFreezePosition;
+
+    public IntBounds GetIntBounds()
+    {
+        return new IntBounds (collider.bounds);
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+        Vector2 vector2Size = collider.bounds.size;
+        size = new Vector2Int( (int)collider.bounds.size.x, (int)collider.bounds.size.y);
+        rectTransform = GetComponent<RectTransform>();
+        lastFreezePosition =new Vector2Int((int)rectTransform.position.x, (int)rectTransform.position.y);
+    }
+
+}
